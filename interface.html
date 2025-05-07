@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GERA INTERFACE</title>
+</head>
+<body>
+  <h1>GERA INTERFACE</h1>
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Visualizador Fluicode</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #preview {
+      border: 1px solid #ccc;
+      padding: 20px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Interface gerada com Fluicode</h2>
+  <div id="preview">Carregando...</div>
+
+
+
+
+
+
+
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCqkWODpY54YGrvqPVMABK_k_ZJLo1KXMA",
+      authDomain: "teste-cfe69.firebaseapp.com",
+      projectId: "teste-cfe69",
+      storageBucket: "teste-cfe69.appspot.com",
+      messagingSenderId: "646579509123",
+      appId: "1:646579509123:web:dd23b863dd8c54bca308b6",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("id");
+
+    if (id) {
+      const fetchCode = async () => {
+        const docRef = doc(db, "fluicode", id);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const userCode = snap.data().code;
+          interpretarCodigo(userCode);
+        } else {
+          document.getElementById("preview").innerHTML = "Código não encontrado!";
+        }
+      };
+      fetchCode();
+    } else {
+      document.getElementById("preview").innerHTML = "Nenhum código especificado.";
+    }
+
+    // Exemplo de interpretador básico do Fluicode
+    function interpretarCodigo(codigo) {
+      const preview = document.getElementById("preview");
+      preview.innerHTML = ""; // Limpa anterior
+
+      const linhas = codigo.split("\n");
+      linhas.forEach(linha => {
+        if (linha.includes("<camp>")) {
+          const partes = linha.split("<camp>");
+          const info = partes[1].split(":");
+          const tipo = info[0].trim().toLowerCase();
+          const label = info[1] || "";
+
+          let elemento = "";
+          switch (tipo) {
+            case "nome":
+            case "email":
+            case "numero":
+            case "senha":
+            case "link":
+            case "whatsapp":
+            case "telefone":
+              elemento = `<label>${label}</label><input type="text" placeholder="${label}" /><br>`;
+              break;
+            case "botão":
+              elemento = `<button>${label}</button><br>`;
+              break;
+            case "imagens":
+            case "video":
+              elemento = `<label>${label}</label><input type="file" /><br>`;
+              break;
+          }
+
+          preview.innerHTML += elemento;
+        }
+      });
+    }
+  </script>
+</body>
+</html>
+
+
+
+</body>
+</html>
