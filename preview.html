@@ -3,116 +3,258 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GERA INTERFACE</title>
+<title>editar 2</title>
 </head>
 <body>
-  <h1>GERA INTERFACE</h1>
+  
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Visualizador Fluicode</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    #preview {
-      border: 1px solid #ccc;
-      padding: 20px;
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Editor Lopixecodin (validação rígida)</title>
+<style>
+ body {
+margin: 0px;
+ }   
+  
+  
+  
+      #editor {
+    min-width: 101%; /* Largura mínima do editor para evitar redimensionamento excessivo */
+    height: 1000px;
+    border: none;
+      font-size: 16px;
+      padding: 10px;
+      resize: horizontal; /* Permite redimensionamento horizontal do editor */
+      white-space: nowrap;
+      overflow-x: auto;
+      outline: none;
+      background: white;
+      color: black;
       margin-top: 20px;
-    }
+      border-top: 1px solid #ccc;/* Adiciona uma linha sólida de 1px na parte superior */
+}
+      
+
+
+  
+  
+  
+  button { margin-top:10px; padding:10px 16px; font-size:16px; }
+  .erros { margin-top:12px; color:#b22222; font-weight:600; }
+  pre { background:#f7f7f7; padding:10px; border-radius:6px; overflow:auto; }
+
+  
+  
+  
+   .menu {
+ width: 100%;
+ height: 50px;
+ background-color: #00a03d;
+ overflow-x: scroll;
+
+}
+
+ ul {
+ list-style: none;
+ margin: 0;
+ padding: 0;
+ display: flex;
+
+}
+
+ li {
+ margin: 0 0px;
+
+}
+
+ a {
+ display: block;
+ color: #ffffff;
+ text-decoration: none;
+ padding: 16px;
+ border-radius: 5px;
+
+}
+
+ a:hover {
+ background-color: #d1ab00;
+ color: #74bb17;
+
+} 
+
+  
+  
   </style>
 </head>
 <body>
-  <h2>Interface gerada com Fluicode</h2>
-  <div id="preview">Carregando...</div>
+
+  
 
 
 
+<div class="menu">
+  <ul>
+    <li><a href="interface principal.html">Interface</a></li>
+    <li><a href="moveis.html">Moveis</a></li>
+    <li><a href="todos-os-anuncios.html">Pizzas</a></li>
+    <li><a href="carros.html">Carros</a></li>
+    <li><a href="sofa.html">Sofá</a></li>
+    <li><a href="comida.html">Comida</a></li>
+    <li><a href="motos.html">Motos</a></li>
+  </ul>
+</div>
+
+  
+  
+  
+  
 
 
 
+<textarea id="editor" placeholder="Cole seu código Lopixecodin aqui..."></textarea><br/>
+<button id="salvar">Salvar no Firestore</button>
 
+<div id="erros" class="erros" style="color: #b22222; margin-top: 10px;"></div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCqkWODpY54YGrvqPVMABK_k_ZJLo1KXMA",
-      authDomain: "teste-cfe69.firebaseapp.com",
-      projectId: "teste-cfe69",
-      storageBucket: "teste-cfe69.appspot.com",
-      messagingSenderId: "646579509123",
-      appId: "1:646579509123:web:dd23b863dd8c54bca308b6",
-    };
+  // Config Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
+    authDomain: "teste1-66092.firebaseapp.com",
+    projectId: "teste1-66092",
+    storageBucket: "teste1-66092.firebasestorage.app",
+    messagingSenderId: "517435649522",
+    appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
+    measurementId: "G-3GVBBV8W7C"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
+  const editor = document.getElementById('editor');
+  const salvarBtn = document.getElementById('salvar');
+  const errosDiv = document.getElementById('erros');
 
-    if (id) {
-      const fetchCode = async () => {
-        const docRef = doc(db, "fluicode", id);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const userCode = snap.data().code;
-          interpretarCodigo(userCode);
-        } else {
-          document.getElementById("preview").innerHTML = "Código não encontrado!";
-        }
-      };
-      fetchCode();
-    } else {
-      document.getElementById("preview").innerHTML = "Nenhum código especificado.";
+  // Regex padrões
+  const fieldRegex = /^\[:([\p{L}\p{N}_-]+):\s*(.*?)\s*\]$/u; // [:chave: valor]
+  const pagmentBlockRegex = /\[pagment\]([\s\S]*?)\[pagment\]/gi;
+  const funcBlockRegex = /\[função\]([\s\S]*?)\[função\]/gi;
+  const funcButtonRegex = /^\[botão:\s*(.+?):\s*direct link:(https?:\/\/[^\]\s]+)\]$/iu;
+
+  function validarCodigo(codigo) {
+    const errors = [];
+
+    // Encontra todos blocos pagment e função com seus índices
+    const pagments = [];
+    while (true) {
+      const match = pagmentBlockRegex.exec(codigo);
+      if (!match) break;
+      pagments.push({ text: match[1], index: match.index });
     }
 
-    // Exemplo de interpretador básico do Fluicode
-    function interpretarCodigo(codigo) {
-      const preview = document.getElementById("preview");
-      preview.innerHTML = ""; // Limpa anterior
+    const funcoes = [];
+    while (true) {
+      const match = funcBlockRegex.exec(codigo);
+      if (!match) break;
+      funcoes.push({ text: match[1], index: match.index });
+    }
 
-      const linhas = codigo.split("\n");
-      linhas.forEach(linha => {
-        if (linha.includes("<camp>")) {
-          const partes = linha.split("<camp>");
-          const info = partes[1].split(":");
-          const tipo = info[0].trim().toLowerCase();
-          const label = info[1] || "";
+    if (pagments.length === 0) {
+      errors.push('Nenhum bloco [pagment] encontrado.');
+    }
+    if (funcoes.length === 0) {
+      errors.push('Nenhum bloco [função] encontrado.');
+    }
 
-          let elemento = "";
-          switch (tipo) {
-            case "nome":
-            case "email":
-            case "numero":
-            case "senha":
-            case "link":
-            case "whatsapp":
-            case "telefone":
-              elemento = `<label>${label}</label><input type="text" placeholder="${label}" /><br>`;
-              break;
-            case "botão":
-              elemento = `<button>${label}</button><br>`;
-              break;
-            case "imagens":
-            case "video":
-              elemento = `<label>${label}</label><input type="file" /><br>`;
-              break;
-          }
-
-          preview.innerHTML += elemento;
+    // Validar cada pagment e checar função imediatamente depois
+    for (let i = 0; i < pagments.length; i++) {
+      const p = pagments[i];
+      const lines = p.text.split('\n').map(l => l.trim()).filter(l => l.length);
+      if (lines.length === 0) {
+        errors.push(`Bloco [pagment] #${i + 1} está vazio.`);
+      }
+      lines.forEach(ln => {
+        if (!fieldRegex.test(ln)) {
+          errors.push(`Campo inválido no bloco [pagment] #${i + 1}: "${ln}". Use "[:chave: valor]".`);
         }
       });
+
+      // Procurar função logo após este pagment (índice da função deve ser > índice do pagment)
+      const funcDepois = funcoes.find(f => f.index > p.index);
+      if (!funcDepois) {
+        errors.push(`Falta o bloco [função] logo após o [pagment] #${i + 1}.`);
+      } else {
+        // Validar botão no bloco função
+        const funcLines = funcDepois.text.split('\n').map(l => l.trim()).filter(l => l.length);
+        const botaoValido = funcLines.some(fl => funcButtonRegex.test(fl));
+        if (!botaoValido) {
+          errors.push(`O bloco [função] após [pagment] #${i + 1} não contém um botão válido no formato: [botão: Nome do botão: direct link:https://site.com]`);
+        }
+      }
     }
-  </script>
-</body>
-</html>
+
+    return errors;
+  }
+
+  async function carregarCodigo() {
+    try {
+      const docRef = doc(db, 'codigos', 'codigoUsuario');
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        editor.value = snap.data().conteudo || '';
+      } else {
+        editor.value = '';
+      }
+    } catch (err) {
+      errosDiv.style.color = '#b22222';
+      errosDiv.innerText = 'Erro ao carregar código do Firestore: ' + (err.message || err);
+    }
+  }
+
+  async function salvarCodigo() {
+    errosDiv.style.color = '#b22222';
+    errosDiv.innerHTML = '';
+    const conteudo = editor.value.trim();
+    if (!conteudo) {
+      errosDiv.innerText = 'O editor está vazio.';
+      return;
+    }
+
+    const erros = validarCodigo(conteudo);
+    if (erros.length) {
+      errosDiv.innerHTML = '<div>⚠️ Corrija os seguintes erros:</div><ul>' +
+        erros.map(e => `<li>${e}</li>`).join('') + '</ul>';
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, 'codigos', 'codigoUsuario'), {
+        conteudo,
+        atualizadoEm: serverTimestamp()
+      });
+      errosDiv.style.color = 'green';
+      errosDiv.innerText = '✅ Código salvo com sucesso.';
+      setTimeout(() => {
+        errosDiv.style.color = '#b22222';
+        errosDiv.innerText = '';
+      }, 3000);
+    } catch (err) {
+      errosDiv.style.color = '#b22222';
+      errosDiv.innerText = 'Erro ao salvar: ' + (err.message || err);
+    }
+  }
+
+  salvarBtn.addEventListener('click', salvarCodigo);
+  carregarCodigo();
+</script>
 
 
-
-</body>
-</html>
+  
