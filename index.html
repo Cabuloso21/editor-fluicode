@@ -1,151 +1,123 @@
+    <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>te</title>
+</head>
+<body>
+  <h1>te</h1>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Editor Fluicode</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #f7f7f7; }
-    textarea { width: 100%; height: 200px; }
-    button { margin-top: 10px; padding: 10px 20px; cursor: pointer; }
-    #preview { margin-top: 30px; padding: 20px; background: white; border: 1px solid #ccc; }
-    #link-container { margin-top: 15px; }
-  </style>
+<meta charset="UTF-8" />
+<title>Editor Lopixecodin - Link Personalizado</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+  textarea { width: 100%; height: 200px; font-family: monospace; font-size: 14px; }
+  input#slugInput { font-family: monospace; }
+  #erros { color: red; margin-top: 10px; }
+  #linkGerado { margin-top: 20px; color: green; word-break: break-word; }
+</style>
 </head>
 <body>
-  <h2>Editor Fluicode</h2>
-  <textarea id="editor"></textarea><br>
-  <button id="runBtn">Executar</button>
-  <button id="saveBtn">Salvar no Firebase</button>
 
-  <div id="link-container"></div>
-  <div id="preview"></div>
+<h1>Editor Lopixecodin</h1>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-    import {
-      getFirestore,
-      collection,
-      addDoc,
-      getDoc,
-      getDocs,
-      doc,
-      query
-    } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+<input type="text" id="slugInput" placeholder="Digite seu link personalizado (ex: meusite)" />
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCqkWODpY54YGrvqPVMABK_k_ZJLo1KXMA",
-      authDomain: "teste-cfe69.firebaseapp.com",
-      projectId: "teste-cfe69",
-      storageBucket: "teste-cfe69.appspot.com",
-      messagingSenderId: "646579509123",
-      appId: "1:646579509123:web:dd23b863dd8c54bca308b6"
-    };
+<textarea id="editor" placeholder="Cole seu código aqui..."></textarea><br />
+<button id="salvar">Salvar no Firestore</button>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+<div id="erros"></div>
+<div id="linkGerado"></div>
 
-    const editor = document.getElementById('editor');
-    const runBtn = document.getElementById('runBtn');
-    const saveBtn = document.getElementById('saveBtn');
-    const preview = document.getElementById('preview');
-    const linkContainer = document.getElementById('link-container');
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc, setDoc, getDoc
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-    function parseFluicode(code) {
-      let html = '';
-      if (code.includes('<formulário>>')) {
-        html += '<form>';
-        const fields = code.match(/<camp>(.*?)<camp>/g);
-        if (fields) {
-          fields.forEach(f => {
-            const content = f.replace(/<camp>/g, '').trim();
-            const [tipo, label] = content.split(':');
-            switch (tipo.trim()) {
-              case 'imagens':
-                html += `<label>${label || 'Imagem'} <input type="file" multiple></label><br>`;
-                break;
-              case 'nome':
-              case 'numero':
-              case 'email':
-              case 'senha':
-              case 'link':
-              case 'whatsapp':
-              case 'telefone':
-                html += `<label>${label} <input type="${tipo === 'senha' ? 'password' : 'text'}"></label><br>`;
-                break;
-              case 'video':
-                html += `<label>${label || 'Vídeo'} <input type="file" accept="video/*"></label><br>`;
-                break;
-              case 'botão':
-                html += `<button type="submit">${label}</button><br>`;
-                break;
-            }
-          });
-        }
-        html += '</form>';
-      }
-      return html;
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWH18dhHz0EBY5cc4wjZ1H6AlO-51sho",
+    authDomain: "teste1-66092.firebaseapp.com",
+    projectId: "teste1-66092",
+    storageBucket: "teste1-66092.firebasestorage.app",
+    messagingSenderId: "517435649522",
+    appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
+    measurementId: "G-3GVBBV8W7C"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const editor = document.getElementById('editor');
+  const slugInput = document.getElementById('slugInput');
+  const salvarBtn = document.getElementById('salvar');
+  const errosDiv = document.getElementById('erros');
+  const linkDiv = document.getElementById('linkGerado');
+
+  function validarCodigo(codigo) {
+    if (!codigo.trim()) return ["O código está vazio."];
+    // Pode validar mais regras aqui
+    return [];
+  }
+
+  function validarSlug(slug) {
+    if (!slug) return "O campo link personalizado está vazio.";
+    if (!/^[a-z0-9\-]+$/.test(slug)) return "Use somente letras minúsculas, números e hífens.";
+    return null;
+  }
+
+  async function salvarCodigo() {
+    errosDiv.innerHTML = '';
+    linkDiv.innerHTML = '';
+
+    const conteudo = editor.value.trim();
+    const slug = slugInput.value.trim();
+
+    // Validar slug
+    const slugError = validarSlug(slug);
+    if (slugError) {
+      errosDiv.innerText = slugError;
+      return;
     }
 
-    runBtn.onclick = () => {
-      const code = editor.value;
-      const html = parseFluicode(code);
-      preview.innerHTML = html;
-    };
-
-    saveBtn.onclick = async () => {
-      const code = editor.value;
-      try {
-        const docRef = await addDoc(collection(db, 'fluicode'), { code });
-        const url = `${window.location.origin}${window.location.pathname}?id=${docRef.id}`;
-
-        // Salva o link permanentemente
-        await addDoc(collection(db, 'fluicode_links'), {
-          id: docRef.id,
-          link: url
-        });
-
-        linkContainer.innerHTML = `Link do seu código salvo: <a href="${url}" target="_blank">${url}</a>`;
-        alert("Código salvo com sucesso!");
-      } catch (e) {
-        console.error("Erro ao salvar:", e);
-      }
-    };
-
-    // Carrega código pelo ID na URL (se existir)
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-    if (id) {
-      (async () => {
-        const docRef = doc(db, "fluicode", id);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          editor.value = snap.data().code;
-          runBtn.click();
-        } else {
-          alert("Código não encontrado!");
-        }
-      })();
+    // Validar código
+    const erros = validarCodigo(conteudo);
+    if (erros.length) {
+      errosDiv.innerHTML = erros.map(e => `<div>⚠️ ${e}</div>`).join('');
+      return;
     }
 
-    // Exibe permanentemente o último link salvo
-    (async () => {
-      try {
-        const q = query(collection(db, 'fluicode_links'));
-        const snapshot = await getDocs(q);
+    // Verificar se slug já existe
+    const docRef = doc(db, "links", slug);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      errosDiv.innerText = `O link "${slug}" já está em uso. Escolha outro.`;
+      return;
+    }
 
-        if (!snapshot.empty) {
-          const links = [];
-          snapshot.forEach(doc => links.push(doc.data()));
-          const ultimo = links[links.length - 1];
-          if (ultimo?.link) {
-            linkContainer.innerHTML = `Link do seu código salvo: <a href="${ultimo.link}" target="_blank">${ultimo.link}</a>`;
-          }
-        }
-      } catch (err) {
-        console.error("Erro ao buscar link salvo:", err);
-      }
-    })();
-  </script>
+    try {
+      // Salvar slug -> código
+      await setDoc(docRef, {
+        conteudo,
+        criadoEm: new Date()
+      });
+
+      // Exibir link para usuário
+      const baseUrl = window.location.origin;
+      const link = `${baseUrl}/interface.html?slug=${encodeURIComponent(slug)}`;
+
+      linkDiv.innerHTML = `✅ Código salvo com sucesso!<br>Compartilhe seu link:<br><a href="${link}" target="_blank">${link}</a>`;
+
+    } catch (err) {
+      errosDiv.innerText = 'Erro ao salvar: ' + (err.message || err);
+    }
+  }
+
+  salvarBtn.addEventListener('click', salvarCodigo);
+</script>
+
 </body>
 </html>
