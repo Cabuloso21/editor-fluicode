@@ -8,111 +8,130 @@
 <body>
   <h1>GERA INTERFACE</h1>
 
-<!DOCTYPE html>
+          <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Visualizador Fluicode</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    #preview {
-      border: 1px solid #ccc;
-      padding: 20px;
-      margin-top: 20px;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Interface Lopixecodin - Link Personalizado</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+  .pagment { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; background: #f8f8f8; }
+  a.btn {
+    display: inline-block;
+    padding: 8px 12px;
+    background: #007bff;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    margin-top: 5px;
+  }
+</style>
 </head>
 <body>
-  <h2>Interface gerada com Fluicode</h2>
-  <div id="preview">Carregando...</div>
 
+<h1>Interface do Código Salvo</h1>
+<div id="container">Carregando...</div>
 
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyCWH18dhHz0EBY5cc4wjZ1H6AlO-51sho",
+    authDomain: "teste1-66092.firebaseapp.com",
+    projectId: "teste1-66092",
+    storageBucket: "teste1-66092.firebasestorage.app",
+    messagingSenderId: "517435649522",
+    appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
+    measurementId: "G-3GVBBV8W7C"
+  };
 
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
+  const container = document.getElementById("container");
 
+  const pagmentBlockRegex = /\[pagment\]([\s\S]*?)\[pagment\]/gi;
+  const funcBlockRegex = /\[função\]([\s\S]*?)\[função\]/gi;
+  const fieldRegex = /^\[:([\p{L}\p{N}_-]+):\s*(.*?)\s*\]$/u;
+  const funcButtonRegex = /^\[botão:\s*([^:]+): direct link:(https?:\/\/[^\]\s]+)\]$/iu;
 
+  function getParametroURL(nome) {
+    const url = new URL(window.location.href);
+    return url.searchParams.get(nome);
+  }
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  function renderizarInterface(codigo) {
+    container.innerHTML = "";
+    const pagments = [...codigo.matchAll(pagmentBlockRegex)];
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCqkWODpY54YGrvqPVMABK_k_ZJLo1KXMA",
-      authDomain: "teste-cfe69.firebaseapp.com",
-      projectId: "teste-cfe69",
-      storageBucket: "teste-cfe69.appspot.com",
-      messagingSenderId: "646579509123",
-      appId: "1:646579509123:web:dd23b863dd8c54bca308b6",
-    };
+    pagments.forEach((match, i) => {
+      const pagmentText = match[1];
+      const campos = pagmentText.split('\n').map(l => l.trim()).filter(l => l.length);
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+      const pagmentDiv = document.createElement("div");
+      pagmentDiv.className = "pagment";
 
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-
-    if (id) {
-      const fetchCode = async () => {
-        const docRef = doc(db, "fluicode", id);
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const userCode = snap.data().code;
-          interpretarCodigo(userCode);
-        } else {
-          document.getElementById("preview").innerHTML = "Código não encontrado!";
-        }
-      };
-      fetchCode();
-    } else {
-      document.getElementById("preview").innerHTML = "Nenhum código especificado.";
-    }
-
-    // Exemplo de interpretador básico do Fluicode
-    function interpretarCodigo(codigo) {
-      const preview = document.getElementById("preview");
-      preview.innerHTML = ""; // Limpa anterior
-
-      const linhas = codigo.split("\n");
-      linhas.forEach(linha => {
-        if (linha.includes("<camp>")) {
-          const partes = linha.split("<camp>");
-          const info = partes[1].split(":");
-          const tipo = info[0].trim().toLowerCase();
-          const label = info[1] || "";
-
-          let elemento = "";
-          switch (tipo) {
-            case "nome":
-            case "email":
-            case "numero":
-            case "senha":
-            case "link":
-            case "whatsapp":
-            case "telefone":
-              elemento = `<label>${label}</label><input type="text" placeholder="${label}" /><br>`;
-              break;
-            case "botão":
-              elemento = `<button>${label}</button><br>`;
-              break;
-            case "imagens":
-            case "video":
-              elemento = `<label>${label}</label><input type="file" /><br>`;
-              break;
-          }
-
-          preview.innerHTML += elemento;
+      campos.forEach(linha => {
+        const m = linha.match(fieldRegex);
+        if (m) {
+          const campoEl = document.createElement("p");
+          campoEl.innerHTML = `<strong>${m[1]}:</strong> ${m[2]}`;
+          pagmentDiv.appendChild(campoEl);
         }
       });
+
+      const funcMatches = [...codigo.matchAll(funcBlockRegex)];
+      if (funcMatches.length > i) {
+        const funcText = funcMatches[i][1];
+        const funcLines = funcText.split('\n').map(l => l.trim()).filter(l => l.length);
+
+        funcLines.forEach(fl => {
+          const btnMatch = fl.match(funcButtonRegex);
+          if (btnMatch) {
+            const nomeBotao = btnMatch[1];
+            const link = btnMatch[2];
+            const botao = document.createElement("a");
+            botao.href = link;
+            botao.target = "_blank";
+            botao.textContent = nomeBotao;
+            botao.className = "btn";
+            pagmentDiv.appendChild(botao);
+          }
+        });
+      }
+
+      container.appendChild(pagmentDiv);
+    });
+
+    if (pagments.length === 0) {
+      container.innerHTML = "<p>Nenhum bloco [pagment] encontrado.</p>";
     }
-  </script>
+  }
+
+  async function carregarCodigoPorSlug(slug) {
+    try {
+      const docRef = doc(db, "links", slug);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        container.innerHTML = "<p>Link personalizado não encontrado.</p>";
+        return;
+      }
+      const conteudo = snap.data().conteudo || "";
+      renderizarInterface(conteudo);
+    } catch (error) {
+      container.innerHTML = "<p>Erro ao carregar: " + error.message + "</p>";
+    }
+  }
+
+  const slug = getParametroURL("slug");
+  if (slug) {
+    carregarCodigoPorSlug(slug);
+  } else {
+    container.innerHTML = "<p>Link inválido. Nenhum slug fornecido.</p>";
+  }
+</script>
+
 </body>
 </html>
-
-
-
-</body>
-</html>
+  
