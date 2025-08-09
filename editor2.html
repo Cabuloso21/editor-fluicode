@@ -1,56 +1,134 @@
-<!DOCTYPE html>
+
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>testando</title>
+<title>editar 2</title>
 </head>
 <body>
-  <h1>testando</h1>
+  
 
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>te</title>
-</head>
-<body>
-  <h1>te</h1>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<title>Editor Lopixecodin - Link Personalizado</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Editor Lopixecodin (validação rígida)</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-  textarea { width: 100%; height: 200px; font-family: monospace; font-size: 14px; }
-  input#slugInput { font-family: monospace; }
-  #erros { color: red; margin-top: 10px; }
-  #linkGerado { margin-top: 20px; color: green; word-break: break-word; }
-</style>
+ body {
+margin: 0px;
+ }   
+  
+  
+  
+      #editor {
+    min-width: 101%; /* Largura mínima do editor para evitar redimensionamento excessivo */
+    height: 1000px;
+    border: none;
+      font-size: 16px;
+      padding: 10px;
+      resize: horizontal; /* Permite redimensionamento horizontal do editor */
+      white-space: nowrap;
+      overflow-x: auto;
+      outline: none;
+      background: white;
+      color: black;
+      margin-top: 20px;
+      border-top: 1px solid #ccc;/* Adiciona uma linha sólida de 1px na parte superior */
+}
+      
+
+
+  
+  
+  
+  button { margin-top:10px; padding:10px 16px; font-size:16px; }
+  .erros { margin-top:12px; color:#b22222; font-weight:600; }
+  pre { background:#f7f7f7; padding:10px; border-radius:6px; overflow:auto; }
+
+  
+  
+  
+   .menu {
+ width: 100%;
+ height: 50px;
+ background-color: orange;
+ overflow-x: scroll;
+
+}
+
+ ul {
+ list-style: none;
+ margin: 0;
+ padding: 0;
+ display: flex;
+
+}
+
+ li {
+ margin: 0 0px;
+
+}
+
+ a {
+ display: block;
+ color: #ffffff;
+ text-decoration: none;
+ padding: 16px;
+ border-radius: 5px;
+
+}
+
+ a:hover {
+ background-color: #d1ab00;
+ color: #74bb17;
+
+} 
+
+  
+  
+  </style>
 </head>
 <body>
 
-<h1>Editor Lopixecodin</h1>
+  
 
-<input type="text" id="slugInput" placeholder="Digite seu link personalizado (ex: meusite)" />
 
-<textarea id="editor" placeholder="Cole seu código aqui..."></textarea><br />
+
+<div class="menu">
+  <ul>
+    <li><a href="interface.html">Interface</a></li>
+    <li><a href="moveis.html">Moveis</a></li>
+    <li><a href="todos-os-anuncios.html">Pizzas</a></li>
+    <li><a href="carros.html">Carros</a></li>
+    <li><a href="sofa.html">Sofá</a></li>
+    <li><a href="comida.html">Comida</a></li>
+    <li><a href="motos.html">Motos</a></li>
+  </ul>
+</div>
+
+  
+  
+  
+  
+
+
+
+<textarea id="editor" placeholder="Cole seu código Lopixecodin aqui..."></textarea><br/>
 <button id="salvar">Salvar no Firestore</button>
 
-<div id="erros"></div>
-<div id="linkGerado"></div>
+<div id="erros" class="erros" style="color: #b22222; margin-top: 10px;"></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, setDoc, getDoc
+    getFirestore, doc, setDoc, getDoc, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
+  // Config Firebase
   const firebaseConfig = {
-    apiKey: "AIzaSyCWH18dhHz0EBY5cc4wjZ1H6AlO-51sho",
+    apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
     authDomain: "teste1-66092.firebaseapp.com",
     projectId: "teste1-66092",
     storageBucket: "teste1-66092.firebasestorage.app",
@@ -63,75 +141,118 @@
   const db = getFirestore(app);
 
   const editor = document.getElementById('editor');
-  const slugInput = document.getElementById('slugInput');
   const salvarBtn = document.getElementById('salvar');
   const errosDiv = document.getElementById('erros');
-  const linkDiv = document.getElementById('linkGerado');
+
+  // Regex padrões
+  const fieldRegex = /^\[:([\p{L}\p{N}_-]+):\s*(.*?)\s*\]$/u; // [:chave: valor]
+  const pagmentBlockRegex = /\[pagment\]([\s\S]*?)\[pagment\]/gi;
+  const funcBlockRegex = /\[função\]([\s\S]*?)\[função\]/gi;
+  const funcButtonRegex = /^\[botão:\s*(.+?):\s*direct link:(https?:\/\/[^\]\s]+)\]$/iu;
 
   function validarCodigo(codigo) {
-    if (!codigo.trim()) return ["O código está vazio."];
-    // Pode validar mais regras aqui
-    return [];
+    const errors = [];
+
+    // Encontra todos blocos pagment e função com seus índices
+    const pagments = [];
+    while (true) {
+      const match = pagmentBlockRegex.exec(codigo);
+      if (!match) break;
+      pagments.push({ text: match[1], index: match.index });
+    }
+
+    const funcoes = [];
+    while (true) {
+      const match = funcBlockRegex.exec(codigo);
+      if (!match) break;
+      funcoes.push({ text: match[1], index: match.index });
+    }
+
+    if (pagments.length === 0) {
+      errors.push('Nenhum bloco [pagment] encontrado.');
+    }
+    if (funcoes.length === 0) {
+      errors.push('Nenhum bloco [função] encontrado.');
+    }
+
+    // Validar cada pagment e checar função imediatamente depois
+    for (let i = 0; i < pagments.length; i++) {
+      const p = pagments[i];
+      const lines = p.text.split('\n').map(l => l.trim()).filter(l => l.length);
+      if (lines.length === 0) {
+        errors.push(`Bloco [pagment] #${i + 1} está vazio.`);
+      }
+      lines.forEach(ln => {
+        if (!fieldRegex.test(ln)) {
+          errors.push(`Campo inválido no bloco [pagment] #${i + 1}: "${ln}". Use "[:chave: valor]".`);
+        }
+      });
+
+      // Procurar função logo após este pagment (índice da função deve ser > índice do pagment)
+      const funcDepois = funcoes.find(f => f.index > p.index);
+      if (!funcDepois) {
+        errors.push(`Falta o bloco [função] logo após o [pagment] #${i + 1}.`);
+      } else {
+        // Validar botão no bloco função
+        const funcLines = funcDepois.text.split('\n').map(l => l.trim()).filter(l => l.length);
+        const botaoValido = funcLines.some(fl => funcButtonRegex.test(fl));
+        if (!botaoValido) {
+          errors.push(`O bloco [função] após [pagment] #${i + 1} não contém um botão válido no formato: [botão: Nome do botão: direct link:https://site.com]`);
+        }
+      }
+    }
+
+    return errors;
   }
 
-  function validarSlug(slug) {
-    if (!slug) return "O campo link personalizado está vazio.";
-    if (!/^[a-z0-9\-]+$/.test(slug)) return "Use somente letras minúsculas, números e hífens.";
-    return null;
+  async function carregarCodigo() {
+    try {
+      const docRef = doc(db, 'codigos', 'codigoUsuario');
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        editor.value = snap.data().conteudo || '';
+      } else {
+        editor.value = '';
+      }
+    } catch (err) {
+      errosDiv.style.color = '#b22222';
+      errosDiv.innerText = 'Erro ao carregar código do Firestore: ' + (err.message || err);
+    }
   }
 
   async function salvarCodigo() {
+    errosDiv.style.color = '#b22222';
     errosDiv.innerHTML = '';
-    linkDiv.innerHTML = '';
-
     const conteudo = editor.value.trim();
-    const slug = slugInput.value.trim();
-
-    // Validar slug
-    const slugError = validarSlug(slug);
-    if (slugError) {
-      errosDiv.innerText = slugError;
+    if (!conteudo) {
+      errosDiv.innerText = 'O editor está vazio.';
       return;
     }
 
-    // Validar código
     const erros = validarCodigo(conteudo);
     if (erros.length) {
-      errosDiv.innerHTML = erros.map(e => `<div>⚠️ ${e}</div>`).join('');
-      return;
-    }
-
-    // Verificar se slug já existe
-    const docRef = doc(db, "links", slug);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      errosDiv.innerText = `O link "${slug}" já está em uso. Escolha outro.`;
+      errosDiv.innerHTML = '<div>⚠️ Corrija os seguintes erros:</div><ul>' +
+        erros.map(e => `<li>${e}</li>`).join('') + '</ul>';
       return;
     }
 
     try {
-      // Salvar slug -> código
-      await setDoc(docRef, {
+      await setDoc(doc(db, 'codigos', 'codigoUsuario'), {
         conteudo,
-        criadoEm: new Date()
+        atualizadoEm: serverTimestamp()
       });
-
-      // Exibir link para usuário
-      const baseUrl = window.location.origin;
-      const link = `${baseUrl}/interface.html?slug=${encodeURIComponent(slug)}`;
-
-      linkDiv.innerHTML = `✅ Código salvo com sucesso!<br>Compartilhe seu link:<br><a href="${link}" target="_blank">${link}</a>`;
-
+      errosDiv.style.color = 'green';
+      errosDiv.innerText = '✅ Código salvo com sucesso.';
+      setTimeout(() => {
+        errosDiv.style.color = '#b22222';
+        errosDiv.innerText = '';
+      }, 3000);
     } catch (err) {
+      errosDiv.style.color = '#b22222';
       errosDiv.innerText = 'Erro ao salvar: ' + (err.message || err);
     }
   }
 
   salvarBtn.addEventListener('click', salvarCodigo);
+  carregarCodigo();
 </script>
-
-</body>
-</html>
-
-
-          
