@@ -1,31 +1,21 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+ <!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Interface Lopixecodin - Link Personalizado</title>
-<style>
-  body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-  .pagment { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 8px; background: #f8f8f8; }
-  a.btn {
-    display: inline-block;
-    padding: 8px 12px;
-    background: #007bff;
-    color: #fff;
-    text-decoration: none;
-    border-radius: 5px;
-    margin-top: 5px;
-  }
-</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pagi 2</title>
 </head>
 <body>
 
-<h1>Interface do Código Salvo</h1>
-<div id="container">Carregando...</div>
+<div id="container"></div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+  import {
+    getFirestore, doc, getDoc
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
+  // Config Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
     authDomain: "teste1-66092.firebaseapp.com",
@@ -39,41 +29,65 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  const container = document.getElementById("container");
+  const container = document.getElementById('container');
 
+  // Regex para capturar blocos e campos
   const pagmentBlockRegex = /\[pagment\]([\s\S]*?)\[pagment\]/gi;
   const funcBlockRegex = /\[função\]([\s\S]*?)\[função\]/gi;
   const fieldRegex = /^\[:([\p{L}\p{N}_-]+):\s*(.*?)\s*\]$/u;
-  const funcButtonRegex = /^\[botão:\s*([^:]+): direct link:(https?:\/\/[^\]\s]+)\]$/iu;
+  const funcButtonRegex = /^\[botão:\s*(.+?):\s*direct link:(https?:\/\/[^\]\s]+)\]$/iu;
 
-  function getParametroURL(nome) {
-    const url = new URL(window.location.href);
-    return url.searchParams.get(nome);
+  async function carregarCodigo() {
+    try {
+      const docRef = doc(db, 'codigos', 'codigoUsuario');
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        container.innerHTML = '<p>❌ Nenhum código encontrado.</p>';
+        return;
+      }
+
+      const conteudo = snap.data().conteudo || '';
+      renderizarInterface(conteudo);
+
+    } catch (err) {
+      container.innerHTML = `<p>Erro ao carregar: ${err.message || err}</p>`;
+    }
   }
 
   function renderizarInterface(codigo) {
-    container.innerHTML = "";
-    const pagments = [...codigo.matchAll(pagmentBlockRegex)];
+    container.innerHTML = '';
 
-    pagments.forEach((match, i) => {
-      const pagmentText = match[1];
+    // Extrair blocos pagment e função, assumindo que estão pareados na ordem
+    const pagments = [...codigo.matchAll(pagmentBlockRegex)];
+    const funcoes = [...codigo.matchAll(funcBlockRegex)];
+
+    // Percorrer todos os blocos pagment
+    pagments.forEach((pagmentMatch, i) => {
+      const pagmentText = pagmentMatch[1];
       const campos = pagmentText.split('\n').map(l => l.trim()).filter(l => l.length);
 
-      const pagmentDiv = document.createElement("div");
-      pagmentDiv.className = "pagment";
+      const pagmentDiv = document.createElement('div');
+      pagmentDiv.className = 'pagment';
+      pagmentDiv.style.border = '1px solid #ccc';
+      pagmentDiv.style.padding = '10px';
+      pagmentDiv.style.margin = '10px 0';
+      pagmentDiv.style.borderRadius = '8px';
+      pagmentDiv.style.background = '#f8f8f8';
 
+      // Renderizar campos do pagment (produto, valor, tipo, código, etc)
       campos.forEach(linha => {
         const m = linha.match(fieldRegex);
         if (m) {
-          const campoEl = document.createElement("p");
-          campoEl.innerHTML = `<strong>${m[1]}:</strong> ${m[2]}`;
+          const campoEl = document.createElement('p');
+          campoEl.innerHTML = `<strong>${capitalize(m[1])}:</strong> ${m[2]}`;
           pagmentDiv.appendChild(campoEl);
         }
       });
 
-      const funcMatches = [...codigo.matchAll(funcBlockRegex)];
-      if (funcMatches.length > i) {
-        const funcText = funcMatches[i][1];
+      // Buscar função correspondente para esse pagment (mesmo índice)
+      const funcMatch = funcoes[i];
+      if (funcMatch) {
+        const funcText = funcMatch[1];
         const funcLines = funcText.split('\n').map(l => l.trim()).filter(l => l.length);
 
         funcLines.forEach(fl => {
@@ -81,11 +95,17 @@
           if (btnMatch) {
             const nomeBotao = btnMatch[1];
             const link = btnMatch[2];
-            const botao = document.createElement("a");
+            const botao = document.createElement('a');
             botao.href = link;
-            botao.target = "_blank";
+            botao.target = '_blank';
             botao.textContent = nomeBotao;
-            botao.className = "btn";
+            botao.style.display = 'inline-block';
+            botao.style.padding = '8px 12px';
+            botao.style.background = '#007bff';
+            botao.style.color = '#fff';
+            botao.style.textDecoration = 'none';
+            botao.style.borderRadius = '5px';
+            botao.style.marginTop = '10px';
             pagmentDiv.appendChild(botao);
           }
         });
@@ -93,35 +113,13 @@
 
       container.appendChild(pagmentDiv);
     });
-
-    if (pagments.length === 0) {
-      container.innerHTML = "<p>Nenhum bloco [pagment] encontrado.</p>";
-    }
   }
 
-  async function carregarCodigoPorSlug(slug) {
-    try {
-      const docRef = doc(db, "links", slug);
-      const snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        container.innerHTML = "<p>Link personalizado não encontrado.</p>";
-        return;
-      }
-      const conteudo = snap.data().conteudo || "";
-      renderizarInterface(conteudo);
-    } catch (error) {
-      container.innerHTML = "<p>Erro ao carregar: " + error.message + "</p>";
-    }
+  function capitalize(str) {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  const slug = getParametroURL("slug");
-  if (slug) {
-    carregarCodigoPorSlug(slug);
-  } else {
-    container.innerHTML = "<p>Link inválido. Nenhum slug fornecido.</p>";
-  }
+  carregarCodigo();
 </script>
-
-</body>
-</html>
 
