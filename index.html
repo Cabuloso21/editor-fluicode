@@ -1,13 +1,4 @@
-    <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>te</title>
-</head>
-<body>
-  <h1>te</h1>
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
@@ -15,18 +6,22 @@
 <style>
   body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
   textarea { width: 100%; height: 200px; font-family: monospace; font-size: 14px; }
-  input#slugInput { font-family: monospace; }
+  input#slugInput { font-family: monospace; width: 100%; padding: 8px; font-size: 16px; margin-bottom: 10px; }
   #erros { color: red; margin-top: 10px; }
   #linkGerado { margin-top: 20px; color: green; word-break: break-word; }
+  button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
 </style>
 </head>
 <body>
 
 <h1>Editor Lopixecodin</h1>
 
-<input type="text" id="slugInput" placeholder="Digite seu link personalizado (ex: meusite)" />
+<label for="slugInput">Digite seu link personalizado (ex: meusite):</label>
+<input type="text" id="slugInput" placeholder="meusite" autocomplete="off" />
 
+<label for="editor">Cole seu código Lopixecodin aqui:</label>
 <textarea id="editor" placeholder="Cole seu código aqui..."></textarea><br />
+
 <button id="salvar">Salvar no Firestore</button>
 
 <div id="erros"></div>
@@ -35,11 +30,11 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
   import {
-    getFirestore, collection, doc, setDoc, getDoc
+    getFirestore, doc, setDoc, getDoc
   } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyCWH18dhHz0EBY5cc4wjZ1H6AlO-51sho",
+    apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
     authDomain: "teste1-66092.firebaseapp.com",
     projectId: "teste1-66092",
     storageBucket: "teste1-66092.firebasestorage.app",
@@ -59,13 +54,13 @@
 
   function validarCodigo(codigo) {
     if (!codigo.trim()) return ["O código está vazio."];
-    // Pode validar mais regras aqui
+    // Você pode adicionar validações específicas aqui conforme o formato esperado.
     return [];
   }
 
   function validarSlug(slug) {
     if (!slug) return "O campo link personalizado está vazio.";
-    if (!/^[a-z0-9\-]+$/.test(slug)) return "Use somente letras minúsculas, números e hífens.";
+    if (!/^[a-z0-9\-]+$/.test(slug)) return "Use somente letras minúsculas, números e hífens (sem espaços).";
     return null;
   }
 
@@ -99,13 +94,11 @@
     }
 
     try {
-      // Salvar slug -> código
       await setDoc(docRef, {
         conteudo,
         criadoEm: new Date()
       });
 
-      // Exibir link para usuário
       const baseUrl = window.location.origin;
       const link = `${baseUrl}/interface.html?slug=${encodeURIComponent(slug)}`;
 
@@ -121,3 +114,4 @@
 
 </body>
 </html>
+
