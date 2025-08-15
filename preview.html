@@ -41,7 +41,7 @@ const db = getFirestore(app);
 const container = document.getElementById('recebe-dados-container');
 const mensagemDiv = document.getElementById('mensagem-recebe-dados');
 
-const camposOrdem = ['Nome','Cpf','Valor R$','Whatsapp','Cidade','Endereço','Descrição'];
+const camposOrdem = ['Nome','nome do produto','Valor R$','Whatsapp','Cidade','Endereço','Descrição'];
 
 async function carregarDados() {
   container.innerHTML = '';
