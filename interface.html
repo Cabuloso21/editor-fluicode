@@ -1,125 +1,110 @@
- <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>pagi 2</title>
-</head>
-<body>
-
-<div id="container"></div>
+<div id="form-container"></div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import {
-    getFirestore, doc, getDoc
-  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-  // Config Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
-    authDomain: "teste1-66092.firebaseapp.com",
-    projectId: "teste1-66092",
-    storageBucket: "teste1-66092.firebasestorage.app",
-    messagingSenderId: "517435649522",
-    appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
-    measurementId: "G-3GVBBV8W7C"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
+  authDomain: "teste1-66092.firebaseapp.com",
+  projectId: "teste1-66092",
+  storageBucket: "teste1-66092.appspot.com",
+  messagingSenderId: "517435649522",
+  appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
+  measurementId: "G-3GVBBV8W7C"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const container = document.getElementById('form-container');
 
-  const container = document.getElementById('container');
+async function carregarCodigo() {
+  const snap = await getDoc(doc(db,'codigos','codigoUsuario'));
+  return snap.exists() ? (snap.data().conteudo || '') : '';
+}
 
-  // Regex para capturar blocos e campos
-  const pagmentBlockRegex = /\[pagment\]([\s\S]*?)\[pagment\]/gi;
-  const funcBlockRegex = /\[função\]([\s\S]*?)\[função\]/gi;
-  const fieldRegex = /^\[:([\p{L}\p{N}_-]+):\s*(.*?)\s*\]$/u;
-  const funcButtonRegex = /^\[botão:\s*(.+?):\s*direct link:(https?:\/\/[^\]\s]+)\]$/iu;
+function criarFormulario(codigo) {
+  container.innerHTML='';
+  const form = document.createElement('form');
+  form.id='formulario';
+  
+  // Captura blocos [formulário]
+  const regexForm = /\[formulário\]([\s\S]*?)\[formulário\]/gi;
+  const match = regexForm.exec(codigo);
+  if(!match) { container.innerText='Nenhum bloco [formulário] encontrado.'; return; }
+  
+  const linhas = match[1].split('\n').map(l=>l.trim()).filter(Boolean);
 
-  async function carregarCodigo() {
-    try {
-      const docRef = doc(db, 'codigos', 'codigoUsuario');
-      const snap = await getDoc(docRef);
-      if (!snap.exists()) {
-        container.innerHTML = '<p>❌ Nenhum código encontrado.</p>';
-        return;
-      }
+  for(let i=0;i<linhas.length;i+=3) {
+    const label = linhas[i].replace(/^\[:|:\]$/g,'');
+    const inputLinha = linhas[i+1];
+    const tipo = linhas[i+2].match(/^\[:tipo-(.+?):\]$/i);
 
-      const conteudo = snap.data().conteudo || '';
-      renderizarInterface(conteudo);
+    const inputLabel = inputLinha.match(/^\[:input:\s*(.+?)\]/i);
+    const obrigatorio = /\[Ação:obrigatório\]/i.test(inputLinha);
 
-    } catch (err) {
-      container.innerHTML = `<p>Erro ao carregar: ${err.message || err}</p>`;
+    if(inputLabel && tipo) {
+      const lbl = document.createElement('label');
+      lbl.textContent=label + (obrigatorio ? ' *' : '');
+      const input = document.createElement('input');
+      input.name=label;
+      input.placeholder=inputLabel[1];
+      input.type= tipo[1]==='numero' ? 'number' : 'text';
+      if(obrigatorio) input.dataset.obrigatorio = "true";
+
+      form.appendChild(lbl);
+      form.appendChild(input);
+      form.appendChild(document.createElement('br'));
     }
   }
 
-  function renderizarInterface(codigo) {
-    container.innerHTML = '';
+  // Captura bloco [função] para botão
+  const regexFunc = /\[função\]([\s\S]*?)\[função\]/gi;
+  const matchFunc = regexFunc.exec(codigo);
+  if(matchFunc) {
+    const btnMatch = matchFunc[1].match(/\[botão-publicar:\s*(.+?)\]/i);
+    const msgMatch = matchFunc[1].match(/\[mensagem:\s*(.+?)\]/i);
 
-    // Extrair blocos pagment e função, assumindo que estão pareados na ordem
-    const pagments = [...codigo.matchAll(pagmentBlockRegex)];
-    const funcoes = [...codigo.matchAll(funcBlockRegex)];
+    if(btnMatch) {
+      const btn = document.createElement('button');
+      btn.type='button';
+      btn.textContent=btnMatch[1];
+      btn.addEventListener('click', async ()=>{
+        let erro=false;
+        const dados = {};
 
-    // Percorrer todos os blocos pagment
-    pagments.forEach((pagmentMatch, i) => {
-      const pagmentText = pagmentMatch[1];
-      const campos = pagmentText.split('\n').map(l => l.trim()).filter(l => l.length);
+        for(let el of form.elements){
+          if(el.name){
+            if(el.dataset.obrigatorio === "true" && el.value.trim() === ""){
+              el.style.border = "2px solid red";
+              erro=true;
+            } else {
+              el.style.border = "";
+              dados[el.name]=el.value;
+            }
+          }
+        }
 
-      const pagmentDiv = document.createElement('div');
-      pagmentDiv.className = 'pagment';
-      pagmentDiv.style.border = '1px solid #ccc';
-      pagmentDiv.style.padding = '10px';
-      pagmentDiv.style.margin = '10px 0';
-      pagmentDiv.style.borderRadius = '8px';
-      pagmentDiv.style.background = '#f8f8f8';
+        if(erro){
+          alert('⚠️ Preencha todos os campos obrigatórios!');
+          return;
+        }
 
-      // Renderizar campos do pagment (produto, valor, tipo, código, etc)
-      campos.forEach(linha => {
-        const m = linha.match(fieldRegex);
-        if (m) {
-          const campoEl = document.createElement('p');
-          campoEl.innerHTML = `<strong>${capitalize(m[1])}:</strong> ${m[2]}`;
-          pagmentDiv.appendChild(campoEl);
+        try{
+          await addDoc(collection(db,'anuncios'), {...dados, criadoEm:serverTimestamp()});
+          alert(msgMatch ? msgMatch[1] : 'Dados enviados com sucesso!');
+          form.reset();
+        }catch(err){
+          alert('Erro ao enviar: '+err.message);
         }
       });
-
-      // Buscar função correspondente para esse pagment (mesmo índice)
-      const funcMatch = funcoes[i];
-      if (funcMatch) {
-        const funcText = funcMatch[1];
-        const funcLines = funcText.split('\n').map(l => l.trim()).filter(l => l.length);
-
-        funcLines.forEach(fl => {
-          const btnMatch = fl.match(funcButtonRegex);
-          if (btnMatch) {
-            const nomeBotao = btnMatch[1];
-            const link = btnMatch[2];
-            const botao = document.createElement('a');
-            botao.href = link;
-            botao.target = '_blank';
-            botao.textContent = nomeBotao;
-            botao.style.display = 'inline-block';
-            botao.style.padding = '8px 12px';
-            botao.style.background = '#007bff';
-            botao.style.color = '#fff';
-            botao.style.textDecoration = 'none';
-            botao.style.borderRadius = '5px';
-            botao.style.marginTop = '10px';
-            pagmentDiv.appendChild(botao);
-          }
-        });
-      }
-
-      container.appendChild(pagmentDiv);
-    });
+      form.appendChild(btn);
+    }
   }
 
-  function capitalize(str) {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
+  container.appendChild(form);
+}
 
-  carregarCodigo();
+// Carrega o código do Firestore e cria o formulário
+carregarCodigo().then(codigo => criarFormulario(codigo));
 </script>
-
