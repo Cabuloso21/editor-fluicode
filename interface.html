@@ -1,5 +1,28 @@
 <div id="form-container"></div>
 
+<style>
+  label .required {
+    color: red;
+    margin-left: 2px;
+  }
+  input.obrigatorio {
+    border: 1px solid #ccc;
+    padding: 4px;
+    margin-bottom: 2px;
+  }
+  input.obrigatorio.erro {
+    border: 2px solid red;
+  }
+  input.obrigatorio.correto {
+    border: 2px solid green;
+  }
+  .erro-msg {
+    color: red;
+    font-size: 0.85em;
+    margin-bottom: 6px;
+  }
+</style>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
 import { getFirestore, doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
@@ -24,11 +47,10 @@ async function carregarCodigo() {
 }
 
 function criarFormulario(codigo) {
-  container.innerHTML='';
+  container.innerHTML = '';
   const form = document.createElement('form');
-  form.id='formulario';
+  form.id = 'formulario';
   
-  // Captura blocos [formulário]
   const regexForm = /\[formulário\]([\s\S]*?)\[formulário\]/gi;
   const match = regexForm.exec(codigo);
   if(!match) { container.innerText='Nenhum bloco [formulário] encontrado.'; return; }
@@ -39,21 +61,45 @@ function criarFormulario(codigo) {
     const label = linhas[i].replace(/^\[:|:\]$/g,'');
     const inputLinha = linhas[i+1];
     const tipo = linhas[i+2].match(/^\[:tipo-(.+?):\]$/i);
-
     const inputLabel = inputLinha.match(/^\[:input:\s*(.+?)\]/i);
     const obrigatorio = /\[Ação:obrigatório\]/i.test(inputLinha);
 
     if(inputLabel && tipo) {
       const lbl = document.createElement('label');
-      lbl.textContent=label + (obrigatorio ? ' *' : '');
+      lbl.textContent = label;
+      if(obrigatorio){
+        const span = document.createElement('span');
+        span.textContent = '*';
+        span.className = 'required';
+        lbl.appendChild(span);
+      }
+
       const input = document.createElement('input');
-      input.name=label;
-      input.placeholder=inputLabel[1];
-      input.type= tipo[1]==='numero' ? 'number' : 'text';
-      if(obrigatorio) input.dataset.obrigatorio = "true";
+      input.name = label;
+      input.placeholder = inputLabel[1];
+      input.type = tipo[1]==='numero' ? 'number' : 'text';
+      if(obrigatorio) input.classList.add('obrigatorio');
+
+      const erroDiv = document.createElement('div');
+      erroDiv.className = 'erro-msg';
+
+      // Atualiza borda ao digitar
+      input.addEventListener('input', () => {
+        if(input.value.trim() === '' && obrigatorio){
+          input.classList.add('erro');
+          input.classList.remove('correto');
+          erroDiv.textContent = '⚠️ Campo obrigatório';
+        } else {
+          input.classList.remove('erro');
+          input.classList.add('correto');
+          erroDiv.textContent = '';
+        }
+      });
 
       form.appendChild(lbl);
+      form.appendChild(document.createElement('br'));
       form.appendChild(input);
+      form.appendChild(erroDiv);
       form.appendChild(document.createElement('br'));
     }
   }
@@ -70,34 +116,42 @@ function criarFormulario(codigo) {
       btn.type='button';
       btn.textContent=btnMatch[1];
       btn.addEventListener('click', async ()=>{
-        let erro=false;
+        let erro = false;
         const dados = {};
 
         for(let el of form.elements){
-          if(el.name){
-            if(el.dataset.obrigatorio === "true" && el.value.trim() === ""){
-              el.style.border = "2px solid red";
-              erro=true;
+          if(el.tagName==='INPUT' && el.name){
+            const erroDiv = el.nextElementSibling;
+            erroDiv.textContent = '';
+            el.classList.remove('erro');
+            el.classList.remove('correto');
+
+            if(el.classList.contains('obrigatorio') && el.value.trim() === ""){
+              el.classList.add('erro');
+              erroDiv.textContent = '⚠️ Campo obrigatório';
+              erro = true;
             } else {
-              el.style.border = "";
-              dados[el.name]=el.value;
+              el.classList.add('correto');
+              dados[el.name] = el.value;
             }
           }
         }
 
-        if(erro){
-          alert('⚠️ Preencha todos os campos obrigatórios!');
-          return;
-        }
+        if(erro) return;
 
         try{
-          await addDoc(collection(db,'anuncios'), {...dados, criadoEm:serverTimestamp()});
+          await addDoc(collection(db,'anuncios'), {...dados, criadoEm: serverTimestamp()});
           alert(msgMatch ? msgMatch[1] : 'Dados enviados com sucesso!');
           form.reset();
+          // Remove bordas verdes após envio
+          form.querySelectorAll('input').forEach(inp=>{
+            inp.classList.remove('correto');
+          });
         }catch(err){
           alert('Erro ao enviar: '+err.message);
         }
       });
+      form.appendChild(document.createElement('br'));
       form.appendChild(btn);
     }
   }
@@ -105,6 +159,5 @@ function criarFormulario(codigo) {
   container.appendChild(form);
 }
 
-// Carrega o código do Firestore e cria o formulário
 carregarCodigo().then(codigo => criarFormulario(codigo));
 </script>
