@@ -1,138 +1,116 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>editor</title>
-</head>
-<body>
-  
+<title>Editor de Código</title>
 
-  
-  
-  <style>
-  body { font-family: Arial, sans-serif; padding: 20px; }
-  h2 { margin-bottom: 10px; }
-  textarea { width: 100%; height: 600px; margin-top: 10px; font-family: monospace; font-size: 14px; }
-  button { padding: 8px 12px; font-size: 14px; cursor: pointer; }
-  #erros { margin-top: 10px; color: #b22222; }
+<style>
+  body {
+    background-color: #1e1e1e;
+    color: #ddd;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100vh;
+    margin: 0;
+    padding: 20px;
+  }
+
+  h1 {
+    color: #61dafb;
+    margin: 10px 0 20px 0;
+    font-size: 26px;
+  }
+
+  #codigo {
+    width: 95%;
+    height: 75vh; /* aumenta a altura do editor */
+    background-color: #252526;
+    color: #ffffff;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 18px;
+    font-size: 16px;
+    line-height: 1.6;
+    outline: none;
+    resize: none;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3) inset;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  #codigo:focus {
+    border-color: #61dafb;
+    box-shadow: 0 0 12px #61dafb33;
+  }
+
+  #salvar {
+    margin-top: 25px;
+    background: linear-gradient(90deg, #4CAF50, #2E8B57);
+    border: none;
+    color: white;
+    font-size: 18px;
+    padding: 14px 35px;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  #salvar:hover {
+    background: linear-gradient(90deg, #45a049, #1e6f4a);
+    box-shadow: 0 0 25px rgba(97, 218, 251, 0.4);
+    transform: scale(1.05);
+  }
+
+  #salvar:active {
+    transform: scale(0.97);
+    box-shadow: 0 0 10px rgba(97, 218, 251, 0.3);
+  }
 </style>
 </head>
+
 <body>
-<h2>Editor Lopixecodin</h2>
+  <h1>Editor lopixecodin</h1>
+  <textarea id="codigo" placeholder="Digite seu código aqui..."></textarea>
+  <button id="salvar">Salvar no Firebase</button>
 
-    
-  <a href="interface.html">formulario 3</a>
-    </div>
-        
-    </div>
-  
-  <a href="formulário principal.html">Anunciar</a>
-    </div>
-        
-    </div>
-    
-    
-    
-    
-<textarea id="editor" placeholder="Cole seu código Lopixecodin aqui..."></textarea><br/>
-<button id="salvar">Salvar no Firestore</button>
-<div id="erros"></div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
+      authDomain: "teste1-66092.firebaseapp.com",
+      projectId: "teste1-66092",
+      storageBucket: "teste1-66092.firebasestorage.app",
+      messagingSenderId: "517435649522",
+      appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
+      measurementId: "G-3GVBBV8W7C"
+    };
 
-// Configuração Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
-  authDomain: "teste1-66092.firebaseapp.com",
-  projectId: "teste1-66092",
-  storageBucket: "teste1-66092.appspot.com",
-  messagingSenderId: "517435649522",
-  appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
-  measurementId: "G-3GVBBV8W7C"
-};
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const docRef = doc(db, "codigos", "codigoUsuario");
+    const textarea = document.getElementById("codigo");
+    const btnSalvar = document.getElementById("salvar");
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-const editor = document.getElementById('editor');
-const salvarBtn = document.getElementById('salvar');
-const errosDiv = document.getElementById('erros');
-
-// Regex blocos Lopixecodin
-const formularioRegex = /\[formulário\]([\s\S]*?)\[formulário\]/gi;
-const funcRegex = /\[função\]([\s\S]*?)\[função\]/gi;
-
-function validarCodigo(codigo) {
-  const errors = [];
-  const formularios = [...codigo.matchAll(formularioRegex)];
-  const funcoes = [...codigo.matchAll(funcRegex)];
-
-  if (formularios.length === 0) errors.push("Nenhum bloco [formulário] encontrado.");
-  if (formularios.length > 0 && funcoes.length === 0) errors.push("Nenhum bloco [função] encontrado, necessário para [formulário].");
-
-  // Validar campos do formulário
-  formularios.forEach((form, i) => {
-    const linhas = form[1].split('\n').map(l => l.trim()).filter(Boolean);
-    for (let j = 0; j < linhas.length; j += 3) {
-      if (!/^\[:.+:\]$/.test(linhas[j])) errors.push(`Linha inválida no bloco [formulário] #${i+1}: "${linhas[j]}"`);
-      if (!/^\[:input:.+\](-\[Ação:.+\])?$/.test(linhas[j+1])) errors.push(`Linha inválida no bloco [formulário] #${i+1}: "${linhas[j+1]}"`);
-      if (!/^\[:tipo-.+:\]$/.test(linhas[j+2])) errors.push(`Linha inválida no bloco [formulário] #${i+1}: "${linhas[j+2]}"`);
-    }
-  });
-
-  return errors;
-}
-
-async function carregarCodigo() {
-  try {
-    const docRef = doc(db, 'codigos', 'codigoUsuario');
-    const snap = await getDoc(docRef);
-    editor.value = snap.exists() ? (snap.data().conteudo || '') : '';
-  } catch (err) {
-    errosDiv.style.color = '#b22222';
-    errosDiv.innerText = 'Erro ao carregar código do Firestore: ' + (err.message || err);
-  }
-}
-
-async function salvarCodigo() {
-  errosDiv.style.color = '#b22222';
-  errosDiv.innerHTML = '';
-
-  const conteudo = editor.value.trim();
-  if (!conteudo) {
-    errosDiv.innerText = 'O editor está vazio.';
-    return;
-  }
-
-  const erros = validarCodigo(conteudo);
-  if (erros.length) {
-    errosDiv.innerHTML = '<div>⚠️ Corrija os seguintes erros:</div><ul>' +
-      erros.map(e => `<li>${e}</li>`).join('') + '</ul>';
-    return;
-  }
-
-  try {
-    await setDoc(doc(db, 'codigos', 'codigoUsuario'), {
-      conteudo,
-      atualizadoEm: serverTimestamp()
+    // Carrega automaticamente
+    onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        textarea.value = docSnap.data().conteudo || "";
+      }
     });
-    errosDiv.style.color = 'green';
-    errosDiv.innerText = '✅ Código salvo com sucesso.';
-    setTimeout(() => {
-      errosDiv.style.color = '#b22222';
-      errosDiv.innerText = '';
-    }, 3000);
-  } catch (err) {
-    errosDiv.style.color = '#b22222';
-    errosDiv.innerText = 'Erro ao salvar: ' + (err.message || err);
-  }
-}
 
-salvarBtn.addEventListener('click', salvarCodigo);
-carregarCodigo();
-</script>
+    // Salvar no Firebase
+    btnSalvar.onclick = async () => {
+      const conteudo = textarea.value.trim();
+      await setDoc(docRef, { conteudo });
+      alert("💾 Código salvo com sucesso!");
+    };
+  </script>
 </body>
 </html>
+
