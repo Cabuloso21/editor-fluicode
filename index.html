@@ -1,116 +1,118 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Editor de Código</title>
+import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 
-<style>
-  body {
-    background-color: #1e1e1e;
-    color: #ddd;
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    height: 100vh;
-    margin: 0;
-    padding: 20px;
-  }
+export default function Auth() {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [user, setUser] = useState(null)
 
-  h1 {
-    color: #61dafb;
-    margin: 10px 0 20px 0;
-    font-size: 26px;
-  }
+  useEffect(() => {
+    getUser()
 
-  #codigo {
-    width: 95%;
-    height: 75vh; /* aumenta a altura do editor */
-    background-color: #252526;
-    color: #ffffff;
-    border: 1px solid #333;
-    border-radius: 10px;
-    padding: 18px;
-    font-size: 16px;
-    line-height: 1.6;
-    outline: none;
-    resize: none;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3) inset;
-    transition: border-color 0.3s, box-shadow 0.3s;
-  }
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
 
-  #codigo:focus {
-    border-color: #61dafb;
-    box-shadow: 0 0 12px #61dafb33;
-  }
-
-  #salvar {
-    margin-top: 25px;
-    background: linear-gradient(90deg, #4CAF50, #2E8B57);
-    border: none;
-    color: white;
-    font-size: 18px;
-    padding: 14px 35px;
-    border-radius: 10px;
-    cursor: pointer;
-    box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
-    transition: all 0.3s ease;
-  }
-
-  #salvar:hover {
-    background: linear-gradient(90deg, #45a049, #1e6f4a);
-    box-shadow: 0 0 25px rgba(97, 218, 251, 0.4);
-    transform: scale(1.05);
-  }
-
-  #salvar:active {
-    transform: scale(0.97);
-    box-shadow: 0 0 10px rgba(97, 218, 251, 0.3);
-  }
-</style>
-</head>
-
-<body>
-  <h1>Editor lopixecodin</h1>
-  <textarea id="codigo" placeholder="Digite seu código aqui..."></textarea>
-  <button id="salvar">Salvar no Firebase</button>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyCWH18dhHz0EBY5Ycc4wjZ1H6AlO-51sho",
-      authDomain: "teste1-66092.firebaseapp.com",
-      projectId: "teste1-66092",
-      storageBucket: "teste1-66092.firebasestorage.app",
-      messagingSenderId: "517435649522",
-      appId: "1:517435649522:web:a6826c13b1e2c5062acf6b",
-      measurementId: "G-3GVBBV8W7C"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const docRef = doc(db, "codigos", "codigoUsuario");
-    const textarea = document.getElementById("codigo");
-    const btnSalvar = document.getElementById("salvar");
-
-    // Carrega automaticamente
-    onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        textarea.value = docSnap.data().conteudo || "";
+        if (currentUser) {
+          await createProfile(currentUser)
+        }
       }
-    });
+    )
 
-    // Salvar no Firebase
-    btnSalvar.onclick = async () => {
-      const conteudo = textarea.value.trim();
-      await setDoc(docRef, { conteudo });
-      alert("💾 Código salvo com sucesso!");
-    };
-  </script>
-</body>
-</html>
+    return () => {
+      listener.subscription.unsubscribe()
+    }
+  }, [])
 
+  async function getUser() {
+    const { data } = await supabase.auth.getSession()
+    setUser(data.session?.user ?? null)
+  }
+
+  async function signUp() {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    if (error) {
+      alert(error.message)
+    } else {
+      alert('Conta criada com sucesso!')
+      if (data.user) {
+        await createProfile(data.user)
+      }
+    }
+  }
+
+  async function createProfile(user) {
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        name: name,
+      })
+
+    if (error) {
+      console.error(error)
+    }
+  }
+
+  async function signIn() {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      alert(error.message)
+    }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  if (user) {
+    return (
+      <div>
+        <h2>Bem-vindo</h2>
+        <p>Email: {user.email}</p>
+        <button onClick={signOut}>Sair</button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <h2>Login / Cadastro</h2>
+
+      <input
+        type="text"
+        placeholder="Seu nome"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+
+      <input
+        type="password"
+        placeholder="Senha"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+
+      <button onClick={signIn}>Entrar</button>
+      <button onClick={signUp}>Criar Conta</button>
+    </div>
+  )
+}
